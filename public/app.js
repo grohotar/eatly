@@ -1,5 +1,5 @@
 const app = document.querySelector('#app');
-const appVersion = '0.1.3';
+const appVersion = '0.1.12';
 
 const state = {
   user: null,
@@ -51,11 +51,11 @@ function renderLogin() {
         <form id="login-form" class="stack">
           <label>
             <span>Логин</span>
-            <input name="username" autocomplete="username" required>
+            <input name="username" autocomplete="username" placeholder="Логин" required>
           </label>
           <label>
             <span>Пароль</span>
-            <input name="password" type="password" autocomplete="current-password" required>
+            <input name="password" type="password" autocomplete="current-password" placeholder="Пароль" required>
           </label>
           <button class="primary" type="submit">Войти</button>
         </form>
@@ -71,13 +71,15 @@ function renderShell() {
 
   return `
     <header class="topbar">
-      <div>
-        <p class="eyebrow">Eatly</p>
+      <div class="topbar-content">
+        <div class="topline">
+          <p class="eyebrow">Eatly</p>
+          <div class="user-box">
+            <span>${escapeHtml(state.user.username)}</span>
+            <button id="logout-button" class="logout-button" type="button">Выйти</button>
+          </div>
+        </div>
         <h1>Дневник питания</h1>
-      </div>
-      <div class="user-box">
-        <span>${escapeHtml(state.user.username)}</span>
-        <button id="logout-button" class="logout-button" type="button" aria-label="Выйти">×</button>
       </div>
     </header>
     <main class="layout">
@@ -98,9 +100,9 @@ function renderShell() {
             </label>
             <label>
               <span>Комментарий к фото</span>
-              <textarea name="photoNote" rows="2" placeholder="Например: тут половина порции, салат с маслом, суп в большой тарелке"></textarea>
+              <textarea name="photoNote" rows="2" placeholder="Например: половина порции, салат с маслом, суп в большой тарелке"></textarea>
             </label>
-            <div class="actions-row">
+            <div class="actions-row photo-actions">
               <button id="analyze-button" class="secondary" type="button" ${!state.imageDataUrl || state.busy ? 'disabled' : ''}>
                 ${state.busy ? 'Анализ...' : 'Анализировать'}
               </button>
@@ -111,30 +113,30 @@ function renderShell() {
           <div class="field-grid">
             <label>
               <span>Название</span>
-              <input name="title" value="${escapeAttr(state.analysis?.title || formValues.title || '')}" placeholder="Например, омлет с овощами" required>
+              <input name="title" value="${escapeAttr(state.analysis?.title || formValues.title || '')}" placeholder="Блюдо или продукт" required>
             </label>
             <label>
               <span>Порция</span>
-              <input name="portionSize" value="${escapeAttr(formValues.portionSize || '')}" placeholder="обычная, половина тарелки, 250 г">
+              <input name="portionSize" value="${escapeAttr(formValues.portionSize || '')}" placeholder="Порция: обычная, 250 г">
             </label>
           </div>
           <div class="field-grid calories-grid">
             <label>
               <span>Ккал от</span>
-              <input name="caloriesMin" inputmode="numeric" value="${state.analysis?.caloriesMin || formValues.caloriesMin || ''}">
+              <input name="caloriesMin" inputmode="numeric" value="${state.analysis?.caloriesMin || formValues.caloriesMin || ''}" placeholder="ккал от">
             </label>
             <label>
               <span>Ккал до</span>
-              <input name="caloriesMax" inputmode="numeric" value="${state.analysis?.caloriesMax || formValues.caloriesMax || ''}">
+              <input name="caloriesMax" inputmode="numeric" value="${state.analysis?.caloriesMax || formValues.caloriesMax || ''}" placeholder="ккал до">
             </label>
           </div>
           <label>
             <span>Ингредиенты</span>
-            <input name="ingredients" value="${escapeAttr((state.analysis?.ingredients || formValues.ingredients || []).join(', '))}" placeholder="через запятую">
+            <input name="ingredients" value="${escapeAttr((state.analysis?.ingredients || formValues.ingredients || []).join(', '))}" placeholder="Ингредиенты через запятую">
           </label>
           <label>
             <span>Заметка</span>
-            <textarea name="note" rows="3" placeholder="что важно помнить про этот приём пищи">${escapeHtml(formValues.note || '')}</textarea>
+            <textarea name="note" rows="3" placeholder="Заметка к приёму пищи">${escapeHtml(formValues.note || '')}</textarea>
           </label>
           <label class="hidden-field">
             <span>portionNote</span>
@@ -144,7 +146,7 @@ function renderShell() {
             <span>gentleComment</span>
             <textarea name="gentleComment">${escapeHtml(state.analysis?.gentleComment || formValues.gentleComment || '')}</textarea>
           </label>
-          <div class="actions-row">
+          <div class="actions-row submit-actions">
             <button class="primary" type="submit">${isEditing ? 'Сохранить изменения' : 'Сохранить'}</button>
             ${isEditing ? '<button id="cancel-edit-button" class="ghost" type="button">Отмена</button>' : ''}
           </div>

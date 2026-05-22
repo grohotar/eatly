@@ -1,10 +1,14 @@
-const cacheName = 'eatly-shell-v5';
+const cacheName = 'eatly-shell-v14';
 const shellFiles = [
   '/',
-  '/styles.css?v=0.1.3',
-  '/app.js?v=0.1.3',
+  '/styles.css?v=0.1.12',
+  '/app.js?v=0.1.12',
   '/manifest.webmanifest',
-  '/icon.svg'
+  '/favicon.png',
+  '/apple-touch-icon.png',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/app-icon.png'
 ];
 
 self.addEventListener('install', (event) => {
