@@ -9,6 +9,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
+const host = process.env.HOST || '127.0.0.1';
 const dataDir = process.env.EATLY_DATA_DIR || path.join(__dirname, 'data');
 const dataFile = path.join(dataDir, 'eatly.json');
 const publicDir = path.join(__dirname, 'public');
@@ -151,8 +152,8 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(publicDir, 'index.html'));
 });
 
-app.listen(port, () => {
-  console.log(`Eatly is listening on port ${port}`);
+app.listen(port, host, () => {
+  console.log(`Eatly is listening on ${host}:${port}`);
 });
 
 async function analyzeWithGemini({ mimeType, base64 }) {
