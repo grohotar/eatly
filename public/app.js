@@ -1,4 +1,5 @@
 const app = document.querySelector('#app');
+const appVersion = '0.1.2';
 
 const state = {
   user: null,
@@ -164,6 +165,7 @@ function renderShell() {
         </div>
       </section>
     </main>
+    <footer class="app-version">Eatly v${appVersion}</footer>
     <div id="toast" class="${state.message ? 'toast is-visible' : 'toast'}">${escapeHtml(state.message)}</div>
   `;
 }
