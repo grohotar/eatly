@@ -1,5 +1,11 @@
-const cacheName = 'eatly-shell-v4';
-const shellFiles = ['/', '/styles.css', '/app.js', '/manifest.webmanifest', '/icon.svg'];
+const cacheName = 'eatly-shell-v5';
+const shellFiles = [
+  '/',
+  '/styles.css?v=0.1.3',
+  '/app.js?v=0.1.3',
+  '/manifest.webmanifest',
+  '/icon.svg'
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(cacheName).then((cache) => cache.addAll(shellFiles)));
@@ -17,8 +23,12 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.pathname.startsWith('/api/')) return;
   event.respondWith(
-    caches.match(event.request).then((cached) => (
-      cached || fetch(event.request).catch(() => caches.match('/'))
-    ))
+    fetch(event.request)
+      .then((response) => {
+        const copy = response.clone();
+        caches.open(cacheName).then((cache) => cache.put(event.request, copy));
+        return response;
+      })
+      .catch(() => caches.match(event.request).then((cached) => cached || caches.match('/')))
   );
 });
