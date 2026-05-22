@@ -1,0 +1,17 @@
+{
+  "name": "Eatly",
+  "short_name": "Eatly",
+  "description": "Gentle food diary",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fcfaf6",
+  "theme_color": "#fcfaf6",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

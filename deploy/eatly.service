@@ -1,0 +1,22 @@
+[Unit]
+Description=Eatly PWA and API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=eatly
+Group=eatly
+WorkingDirectory=/opt/eatly
+EnvironmentFile=/etc/eatly/eatly.env
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/eatly
+
+[Install]
+WantedBy=multi-user.target
