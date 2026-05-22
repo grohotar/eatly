@@ -219,7 +219,7 @@ async function analyzeWithGemini({ images, photoNote }) {
     photoNote ? `Комментарий пользователя к фото: ${photoNote}` : '',
     'Верни только JSON без markdown.',
     'Схема:',
-    '{"title":"короткое название","ingredients":["ингредиент"],"caloriesMin":0,"caloriesMax":0,"portionNote":"коротко про порцию и неопределённость","gentleComment":"мягкий нейтральный комментарий"}',
+    '{"title":"короткое название","ingredients":["ингредиент"],"caloriesMin":0,"caloriesMax":0,"portionNote":"коротко про порцию и неопределённость"}',
     'Если еда не распознана, поставь caloriesMin=0, caloriesMax=0 и попроси описать блюдо вручную.'
   ].filter(Boolean).join('\n');
 
@@ -242,7 +242,7 @@ async function analyzeTextWithGemini({ description }) {
     'Округляй caloriesMin и caloriesMax до ближайших 10 ккал.',
     'Верни только JSON без markdown.',
     'Схема:',
-    '{"title":"короткое название","ingredients":["ингредиент"],"caloriesMin":0,"caloriesMax":0,"portionNote":"коротко про допущения по порции","gentleComment":"мягкий нейтральный комментарий"}'
+    '{"title":"короткое название","ingredients":["ингредиент"],"caloriesMin":0,"caloriesMax":0,"portionNote":"коротко про допущения по порции"}'
   ].join('\n');
 
   return requestGeminiJson([{ text: prompt }]);
@@ -301,8 +301,8 @@ function normalizeAnalysis(value) {
     ingredients: cleanStringArray(analysis.ingredients, 12, 40),
     caloriesMin,
     caloriesMax,
-    portionNote: cleanText(analysis.portionNote, 220) || 'Оценка по фото примерная, порцию лучше уточнить вручную.',
-    gentleComment: cleanText(analysis.gentleComment, 220) || 'Можно сохранить как ориентир и поправить детали под себя.'
+    portionNote: cleanText(analysis.portionNote, 220) || 'Оценка примерная, детали можно уточнить вручную.',
+    gentleComment: ''
   };
 }
 

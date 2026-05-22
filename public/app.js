@@ -1,5 +1,5 @@
 const app = document.querySelector('#app');
-const appVersion = '0.1.31';
+const appVersion = '0.1.32';
 
 const state = {
   user: null,
@@ -193,7 +193,6 @@ function renderAnalysis() {
         <strong>${escapeHtml(analysis.title)}</strong>
       </div>
       <p>${escapeHtml(analysis.portionNote || '')}</p>
-      ${analysis.gentleComment ? `<p>${escapeHtml(analysis.gentleComment)}</p>` : ''}
       ${analysis.ingredients?.length ? `<div class="chips">${analysis.ingredients.map((item) => `<span>${escapeHtml(item)}</span>`).join('')}</div>` : ''}
     </div>
   `;

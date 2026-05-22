@@ -1,8 +1,8 @@
-const cacheName = 'eatly-shell-v33';
+const cacheName = 'eatly-shell-v34';
 const shellFiles = [
   '/',
-  '/styles.css?v=0.1.31',
-  '/app.js?v=0.1.31',
+  '/styles.css?v=0.1.32',
+  '/app.js?v=0.1.32',
   '/manifest.webmanifest',
   '/favicon.png',
   '/apple-touch-icon.png',
