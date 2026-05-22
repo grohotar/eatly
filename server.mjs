@@ -145,7 +145,7 @@ app.use('/api', (req, res) => {
 
 app.use(express.static(publicDir, {
   extensions: ['html'],
-  maxAge: isProduction ? '1h' : 0
+  maxAge: 0
 }));
 
 app.get('*', (req, res) => {

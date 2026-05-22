@@ -19,6 +19,7 @@ const confidenceLabels = {
 init();
 
 async function init() {
+  lockViewportZoom();
   registerServiceWorker();
   await loadMe();
   render();
@@ -76,7 +77,7 @@ function renderShell() {
       </div>
       <div class="user-box">
         <span>${escapeHtml(state.user.username)}</span>
-        <button id="logout-button" class="ghost" type="button" aria-label="Выйти">↗</button>
+        <button id="logout-button" class="logout-button" type="button" aria-label="Выйти">×</button>
       </div>
     </header>
     <main class="layout">
@@ -279,7 +280,9 @@ async function onAnalyze() {
   try {
     const payload = await api('/api/analyze-food', {
       method: 'POST',
-      body: { imageDataUrl: state.imageDataUrl }
+      body: { imageDataUrl: state.imageDataUrl },
+      retries: 1,
+      timeoutMs: 70000
     });
     state.analysis = payload.analysis;
     flash('Анализ готов.');
@@ -332,16 +335,70 @@ function clearPhoto(shouldRender = true) {
 }
 
 async function api(url, options = {}) {
-  const response = await fetch(url, {
-    method: options.method || 'GET',
-    headers: options.body ? { 'Content-Type': 'application/json' } : undefined,
-    body: options.body ? JSON.stringify(options.body) : undefined
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload.error || 'Что-то пошло не так.');
+  const attempts = Number(options.retries || 0) + 1;
+  let lastError;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const controller = options.timeoutMs ? new AbortController() : null;
+      const timeout = controller
+        ? window.setTimeout(() => controller.abort(), options.timeoutMs)
+        : null;
+
+      const response = await fetch(url, {
+        method: options.method || 'GET',
+        headers: options.body ? { 'Content-Type': 'application/json' } : undefined,
+        body: options.body ? JSON.stringify(options.body) : undefined,
+        signal: controller?.signal
+      });
+
+      if (timeout) window.clearTimeout(timeout);
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || 'Что-то пошло не так.');
+      }
+      return payload;
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts - 1) {
+        await delay(700);
+      }
+    }
   }
-  return payload;
+
+  throw normalizeNetworkError(lastError);
+}
+
+function normalizeNetworkError(error) {
+  if (error?.name === 'AbortError') {
+    return new Error('Анализ занял слишком много времени. Попробуй ещё раз или сохрани запись вручную.');
+  }
+
+  const message = String(error?.message || '');
+  if (error instanceof TypeError || /load failed|failed to fetch|network/i.test(message)) {
+    return new Error('Связь с анализом сорвалась. Я уже попробовал ещё раз, но не получилось. Повтори позже или сохрани запись вручную.');
+  }
+
+  return error instanceof Error ? error : new Error('Что-то пошло не так.');
+}
+
+function delay(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function lockViewportZoom() {
+  document.addEventListener('gesturestart', preventGesture, { passive: false });
+  document.addEventListener('gesturechange', preventGesture, { passive: false });
+  document.addEventListener('gestureend', preventGesture, { passive: false });
+  document.addEventListener('touchmove', (event) => {
+    if (event.scale && event.scale !== 1) {
+      event.preventDefault();
+    }
+  }, { passive: false });
+}
+
+function preventGesture(event) {
+  event.preventDefault();
 }
 
 function flash(message) {

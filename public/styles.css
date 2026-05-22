@@ -18,14 +18,36 @@
   box-sizing: border-box;
 }
 
+html {
+  max-width: 100%;
+  overflow-x: hidden;
+  overscroll-behavior: none;
+  scrollbar-width: none;
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
+  max-width: 100%;
+  overflow-x: hidden;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(252, 250, 246, 0.92)),
     radial-gradient(circle at top left, rgba(242, 184, 75, 0.18), transparent 32rem),
     var(--bg);
   color: var(--ink);
+  -webkit-overflow-scrolling: touch;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 button,
@@ -176,6 +198,13 @@ textarea {
   resize: vertical;
 }
 
+input,
+select,
+textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 input:focus,
 select:focus,
 textarea:focus {
@@ -278,6 +307,22 @@ textarea:focus {
 .ghost {
   background: var(--soft);
   color: var(--ink);
+}
+
+.logout-button {
+  width: 44px;
+  min-height: 44px;
+  border-radius: 8px;
+  padding: 0;
+  background: #f8e8e8;
+  color: var(--danger);
+  font-size: 1.55rem;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.logout-button:hover {
+  background: #f1d2d2;
 }
 
 .icon-button {

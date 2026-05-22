@@ -1,4 +1,4 @@
-const cacheName = 'eatly-shell-v1';
+const cacheName = 'eatly-shell-v2';
 const shellFiles = ['/', '/styles.css', '/app.js', '/manifest.webmanifest', '/icon.svg'];
 
 self.addEventListener('install', (event) => {
