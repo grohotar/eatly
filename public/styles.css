@@ -334,6 +334,21 @@ textarea:focus {
   font-size: 1.4rem;
 }
 
+.edit-button {
+  width: 38px;
+  min-height: 38px;
+  border-radius: 8px;
+  padding: 0;
+  background: #edf3f5;
+  color: #36515c;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.hidden-field {
+  display: none;
+}
+
 .muted,
 .form-message,
 .empty {
@@ -386,6 +401,12 @@ textarea:focus {
 .meal-main {
   justify-content: space-between;
   align-items: flex-start;
+}
+
+.meal-actions {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
 }
 
 .meal-main h3 {

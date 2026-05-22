@@ -1,20 +1,16 @@
 const app = document.querySelector('#app');
-const appVersion = '0.1.2';
+const appVersion = '0.1.3';
 
 const state = {
   user: null,
   meals: [],
   analysis: null,
+  editingMealId: null,
+  editDraft: null,
   previewUrl: '',
   imageDataUrl: '',
   busy: false,
   message: ''
-};
-
-const confidenceLabels = {
-  low: 'низкая',
-  medium: 'средняя',
-  high: 'высокая'
 };
 
 init();
@@ -70,6 +66,9 @@ function renderLogin() {
 }
 
 function renderShell() {
+  const isEditing = Boolean(state.editingMealId);
+  const formValues = state.editDraft || {};
+
   return `
     <header class="topbar">
       <div>
@@ -84,75 +83,71 @@ function renderShell() {
     <main class="layout">
       <section class="entry-panel">
         <div class="section-head">
-          <h2>Новая запись</h2>
-          <span class="muted">${new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(new Date())}</span>
+          <h2>${isEditing ? 'Редактирование' : 'Новая запись'}</h2>
+          <span class="muted">${isEditing ? 'можно поправить детали' : new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(new Date())}</span>
         </div>
         <form id="meal-form" class="stack">
-          <label class="photo-drop">
-            <input id="photo-input" name="photo" type="file" accept="image/*" capture="environment">
-            ${
-              state.previewUrl
-                ? `<img src="${state.previewUrl}" alt="Выбранное фото">`
-                : '<span class="camera-icon" aria-hidden="true">□</span><strong>Фото еды</strong>'
-            }
-          </label>
-          <div class="actions-row">
-            <button id="analyze-button" class="secondary" type="button" ${!state.imageDataUrl || state.busy ? 'disabled' : ''}>
-              ${state.busy ? 'Анализ...' : 'Анализировать'}
-            </button>
-            <button id="clear-photo-button" class="ghost" type="button" ${!state.imageDataUrl ? 'disabled' : ''}>Очистить</button>
-          </div>
+          ${isEditing ? '' : `
+            <label class="photo-drop">
+              <input id="photo-input" name="photo" type="file" accept="image/*" capture="environment">
+              ${
+                state.previewUrl
+                  ? `<img src="${state.previewUrl}" alt="Выбранное фото">`
+                  : '<span class="camera-icon" aria-hidden="true">□</span><strong>Фото еды</strong>'
+              }
+            </label>
+            <label>
+              <span>Комментарий к фото</span>
+              <textarea name="photoNote" rows="2" placeholder="Например: тут половина порции, салат с маслом, суп в большой тарелке"></textarea>
+            </label>
+            <div class="actions-row">
+              <button id="analyze-button" class="secondary" type="button" ${!state.imageDataUrl || state.busy ? 'disabled' : ''}>
+                ${state.busy ? 'Анализ...' : 'Анализировать'}
+              </button>
+              <button id="clear-photo-button" class="ghost" type="button" ${!state.imageDataUrl ? 'disabled' : ''}>Очистить</button>
+            </div>
+          `}
           ${state.analysis ? renderAnalysis() : ''}
           <div class="field-grid">
             <label>
               <span>Название</span>
-              <input name="title" value="${escapeAttr(state.analysis?.title || '')}" placeholder="Например, омлет с овощами" required>
+              <input name="title" value="${escapeAttr(state.analysis?.title || formValues.title || '')}" placeholder="Например, омлет с овощами" required>
             </label>
             <label>
               <span>Порция</span>
-              <input name="portionSize" placeholder="обычная, половина тарелки, 250 г">
+              <input name="portionSize" value="${escapeAttr(formValues.portionSize || '')}" placeholder="обычная, половина тарелки, 250 г">
             </label>
           </div>
           <div class="field-grid calories-grid">
             <label>
               <span>Ккал от</span>
-              <input name="caloriesMin" inputmode="numeric" value="${state.analysis?.caloriesMin || ''}">
+              <input name="caloriesMin" inputmode="numeric" value="${state.analysis?.caloriesMin || formValues.caloriesMin || ''}">
             </label>
             <label>
               <span>Ккал до</span>
-              <input name="caloriesMax" inputmode="numeric" value="${state.analysis?.caloriesMax || ''}">
+              <input name="caloriesMax" inputmode="numeric" value="${state.analysis?.caloriesMax || formValues.caloriesMax || ''}">
             </label>
           </div>
           <label>
             <span>Ингредиенты</span>
-            <input name="ingredients" value="${escapeAttr((state.analysis?.ingredients || []).join(', '))}" placeholder="через запятую">
+            <input name="ingredients" value="${escapeAttr((state.analysis?.ingredients || formValues.ingredients || []).join(', '))}" placeholder="через запятую">
           </label>
-          <div class="field-grid">
-            <label>
-              <span>Состояние</span>
-              <select name="mood">
-                <option value="">Не отмечать</option>
-                <option>спокойно</option>
-                <option>голодно</option>
-                <option>тревожно</option>
-                <option>устало</option>
-                <option>сытно</option>
-              </select>
-            </label>
-            <label>
-              <span>Уверенность</span>
-              <select name="confidence">
-                ${['low', 'medium', 'high'].map((value) => `
-                  <option value="${value}" ${state.analysis?.confidence === value ? 'selected' : ''}>${confidenceLabels[value]}</option>
-                `).join('')}
-              </select>
-            </label>
-          </div>
           <label>
             <span>Заметка</span>
-            <textarea name="note" rows="3" placeholder="что важно помнить про этот приём пищи"></textarea>
+            <textarea name="note" rows="3" placeholder="что важно помнить про этот приём пищи">${escapeHtml(formValues.note || '')}</textarea>
           </label>
-          <button class="primary" type="submit">Сохранить</button>
+          <label class="hidden-field">
+            <span>portionNote</span>
+            <textarea name="portionNote">${escapeHtml(state.analysis?.portionNote || formValues.portionNote || '')}</textarea>
+          </label>
+          <label class="hidden-field">
+            <span>gentleComment</span>
+            <textarea name="gentleComment">${escapeHtml(state.analysis?.gentleComment || formValues.gentleComment || '')}</textarea>
+          </label>
+          <div class="actions-row">
+            <button class="primary" type="submit">${isEditing ? 'Сохранить изменения' : 'Сохранить'}</button>
+            ${isEditing ? '<button id="cancel-edit-button" class="ghost" type="button">Отмена</button>' : ''}
+          </div>
         </form>
       </section>
       <section class="diary-panel">
@@ -176,7 +171,6 @@ function renderAnalysis() {
     <div class="analysis-box">
       <div class="analysis-head">
         <strong>${escapeHtml(analysis.title)}</strong>
-        <span>${confidenceLabels[analysis.confidence] || 'средняя'} уверенность</span>
       </div>
       <p>${escapeHtml(analysis.portionNote || '')}</p>
       ${analysis.gentleComment ? `<p>${escapeHtml(analysis.gentleComment)}</p>` : ''}
@@ -198,12 +192,14 @@ function renderMeal(meal) {
           <time>${new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(date)}</time>
           <h3>${escapeHtml(meal.title)}</h3>
         </div>
-        <button class="icon-button delete-meal" type="button" data-id="${meal.id}" aria-label="Удалить">×</button>
+        <div class="meal-actions">
+          <button class="edit-button edit-meal" type="button" data-id="${meal.id}" aria-label="Редактировать">✎</button>
+          <button class="icon-button delete-meal" type="button" data-id="${meal.id}" aria-label="Удалить">×</button>
+        </div>
       </div>
       <div class="meal-meta">
         <span>${escapeHtml(calories)}</span>
         ${meal.portionSize ? `<span>${escapeHtml(meal.portionSize)}</span>` : ''}
-        ${meal.mood ? `<span>${escapeHtml(meal.mood)}</span>` : ''}
       </div>
       ${meal.ingredients?.length ? `<div class="chips">${meal.ingredients.map((item) => `<span>${escapeHtml(item)}</span>`).join('')}</div>` : ''}
       ${meal.note ? `<p>${escapeHtml(meal.note)}</p>` : ''}
@@ -218,6 +214,7 @@ function bindEvents() {
   document.querySelector('#analyze-button')?.addEventListener('click', onAnalyze);
   document.querySelector('#clear-photo-button')?.addEventListener('click', clearPhoto);
   document.querySelector('#meal-form')?.addEventListener('submit', onSaveMeal);
+  document.querySelector('#cancel-edit-button')?.addEventListener('click', cancelEdit);
   document.querySelector('#refresh-button')?.addEventListener('click', async () => {
     await loadMeals();
     flash('История обновлена.');
@@ -228,6 +225,9 @@ function bindEvents() {
       await loadMeals();
       flash('Запись удалена.');
     });
+  });
+  document.querySelectorAll('.edit-meal').forEach((button) => {
+    button.addEventListener('click', () => startEdit(button.dataset.id));
   });
 }
 
@@ -256,6 +256,8 @@ async function onLogout() {
   state.user = null;
   state.meals = [];
   state.analysis = null;
+  state.editingMealId = null;
+  state.editDraft = null;
   clearPhoto(false);
   render();
 }
@@ -276,13 +278,17 @@ async function onPhotoChange(event) {
 
 async function onAnalyze() {
   if (!state.imageDataUrl) return;
+  const photoNote = new FormData(document.querySelector('#meal-form')).get('photoNote');
   state.busy = true;
   state.message = '';
   render();
   try {
     const payload = await api('/api/analyze-food', {
       method: 'POST',
-      body: { imageDataUrl: state.imageDataUrl },
+      body: {
+        imageDataUrl: state.imageDataUrl,
+        photoNote
+      },
       retries: 1,
       timeoutMs: 70000
     });
@@ -305,28 +311,59 @@ async function onSaveMeal(event) {
     .filter(Boolean);
 
   try {
-    await api('/api/meals', {
-      method: 'POST',
-      body: {
-        title: form.get('title'),
-        ingredients,
-        caloriesMin: form.get('caloriesMin'),
-        caloriesMax: form.get('caloriesMax'),
-        confidence: form.get('confidence'),
-        portionNote: state.analysis?.portionNote,
-        gentleComment: state.analysis?.gentleComment,
-        portionSize: form.get('portionSize'),
-        mood: form.get('mood'),
-        note: form.get('note')
-      }
+    const mealPayload = {
+      title: form.get('title'),
+      ingredients,
+      caloriesMin: form.get('caloriesMin'),
+      caloriesMax: form.get('caloriesMax'),
+      portionNote: form.get('portionNote'),
+      gentleComment: form.get('gentleComment'),
+      portionSize: form.get('portionSize'),
+      note: form.get('note')
+    };
+    const isEditing = Boolean(state.editingMealId);
+
+    await api(isEditing ? `/api/meals/${state.editingMealId}` : '/api/meals', {
+      method: isEditing ? 'PUT' : 'POST',
+      body: mealPayload
     });
     state.analysis = null;
+    state.editingMealId = null;
+    state.editDraft = null;
     clearPhoto(false);
     await loadMeals();
-    flash('Запись сохранена.');
+    flash(isEditing ? 'Запись обновлена.' : 'Запись сохранена.');
   } catch (error) {
     flash(error.message);
   }
+}
+
+function startEdit(mealId) {
+  const meal = state.meals.find((item) => item.id === mealId);
+  if (!meal) return;
+  state.editingMealId = meal.id;
+  state.editDraft = {
+    title: meal.title,
+    ingredients: meal.ingredients || [],
+    caloriesMin: meal.caloriesMin || '',
+    caloriesMax: meal.caloriesMax || '',
+    portionNote: meal.portionNote || '',
+    gentleComment: meal.gentleComment || '',
+    portionSize: meal.portionSize || '',
+    note: meal.note || ''
+  };
+  state.analysis = null;
+  clearPhoto(false);
+  render();
+  document.querySelector('.entry-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cancelEdit() {
+  state.editingMealId = null;
+  state.editDraft = null;
+  state.analysis = null;
+  clearPhoto(false);
+  render();
 }
 
 function clearPhoto(shouldRender = true) {

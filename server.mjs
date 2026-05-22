@@ -79,11 +79,9 @@ app.post('/api/meals', requireUser, async (req, res) => {
     ingredients: cleanStringArray(body.ingredients, 12, 40),
     caloriesMin: cleanNumber(body.caloriesMin, 0, 5000),
     caloriesMax: cleanNumber(body.caloriesMax, 0, 5000),
-    confidence: cleanEnum(body.confidence, ['low', 'medium', 'high'], 'medium'),
     portionNote: cleanText(body.portionNote, 220),
     gentleComment: cleanText(body.gentleComment, 220),
     portionSize: cleanText(body.portionSize, 80),
-    mood: cleanText(body.mood, 80),
     note: cleanText(body.note, 500)
   };
 
@@ -94,6 +92,32 @@ app.post('/api/meals', requireUser, async (req, res) => {
   db.meals.push(meal);
   await saveDb();
   res.status(201).json({ meal });
+});
+
+app.put('/api/meals/:id', requireUser, async (req, res) => {
+  const meal = db.meals.find((item) => item.id === req.params.id && item.userId === req.user.id);
+
+  if (!meal) {
+    return res.status(404).json({ error: 'Запись не найдена.' });
+  }
+
+  const body = req.body || {};
+  meal.updatedAt = new Date().toISOString();
+  meal.title = cleanText(body.title, 90) || 'Приём пищи';
+  meal.ingredients = cleanStringArray(body.ingredients, 12, 40);
+  meal.caloriesMin = cleanNumber(body.caloriesMin, 0, 5000);
+  meal.caloriesMax = cleanNumber(body.caloriesMax, 0, 5000);
+  meal.portionNote = cleanText(body.portionNote, 220);
+  meal.gentleComment = cleanText(body.gentleComment, 220);
+  meal.portionSize = cleanText(body.portionSize, 80);
+  meal.note = cleanText(body.note, 500);
+
+  if (meal.caloriesMin && meal.caloriesMax && meal.caloriesMin > meal.caloriesMax) {
+    [meal.caloriesMin, meal.caloriesMax] = [meal.caloriesMax, meal.caloriesMin];
+  }
+
+  await saveDb();
+  res.json({ meal });
 });
 
 app.delete('/api/meals/:id', requireUser, async (req, res) => {
@@ -131,7 +155,8 @@ app.post('/api/analyze-food', requireUser, async (req, res) => {
   }
 
   try {
-    const analysis = await analyzeWithGemini({ mimeType, base64 });
+    const photoNote = cleanText(req.body?.photoNote, 500);
+    const analysis = await analyzeWithGemini({ mimeType, base64, photoNote });
     res.json({ analysis });
   } catch (error) {
     console.error('Gemini analysis failed:', error);
@@ -156,15 +181,16 @@ app.listen(port, host, () => {
   console.log(`Eatly is listening on ${host}:${port}`);
 });
 
-async function analyzeWithGemini({ mimeType, base64 }) {
+async function analyzeWithGemini({ mimeType, base64, photoNote }) {
   const prompt = [
     'Ты бережный ассистент для дневника питания. Пользователь может иметь РПП, поэтому отвечай без оценки, давления, стыда и диетической риторики.',
     'Проанализируй фото еды. Вес порции по фото неизвестен, поэтому калории оценивай только диапазоном и явно учитывай неопределённость.',
+    photoNote ? `Комментарий пользователя к фото: ${photoNote}` : '',
     'Верни только JSON без markdown.',
     'Схема:',
-    '{"title":"короткое название","ingredients":["ингредиент"],"caloriesMin":0,"caloriesMax":0,"confidence":"low|medium|high","portionNote":"коротко про порцию и неопределённость","gentleComment":"мягкий нейтральный комментарий"}',
-    'Если еда не распознана, поставь confidence="low", caloriesMin=0, caloriesMax=0 и попроси описать блюдо вручную.'
-  ].join('\n');
+    '{"title":"короткое название","ingredients":["ингредиент"],"caloriesMin":0,"caloriesMax":0,"portionNote":"коротко про порцию и неопределённость","gentleComment":"мягкий нейтральный комментарий"}',
+    'Если еда не распознана, поставь caloriesMin=0, caloriesMax=0 и попроси описать блюдо вручную.'
+  ].filter(Boolean).join('\n');
 
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`, {
     method: 'POST',
@@ -221,7 +247,6 @@ function normalizeAnalysis(value) {
     ingredients: cleanStringArray(analysis.ingredients, 12, 40),
     caloriesMin,
     caloriesMax,
-    confidence: cleanEnum(analysis.confidence, ['low', 'medium', 'high'], 'medium'),
     portionNote: cleanText(analysis.portionNote, 220) || 'Оценка по фото примерная, порцию лучше уточнить вручную.',
     gentleComment: cleanText(analysis.gentleComment, 220) || 'Можно сохранить как ориентир и поправить детали под себя.'
   };
@@ -394,8 +419,5 @@ function cleanNumber(value, min, max) {
   return Math.min(max, Math.max(min, number));
 }
 
-function cleanEnum(value, allowed, fallback) {
-  return allowed.includes(value) ? value : fallback;
-}
 
 export { hashPassword };
