@@ -1,5 +1,5 @@
 const app = document.querySelector('#app');
-const appVersion = '0.1.19';
+const appVersion = '0.1.23';
 
 const state = {
   user: null,
@@ -107,13 +107,13 @@ function renderShell() {
             </label>
             <label>
               <span>Комментарий к фото</span>
-              <textarea name="photoNote" rows="2" placeholder="Например: половина порции, салат с маслом, суп в большой тарелке"></textarea>
+              <textarea name="photoNote" rows="2" placeholder="Опиши еду или уточни фото: 1 куриное филе, 3 яйца скрэмбл без масла, 2 тоста"></textarea>
             </label>
             <div class="actions-row photo-actions">
-              <button id="analyze-button" class="secondary" type="button" ${!state.imageDataUrl || state.busy ? 'disabled' : ''}>
-                ${state.busy ? 'Анализ...' : 'Анализировать'}
+              <button id="analyze-button" class="secondary" type="button" ${state.busy ? 'disabled' : ''}>
+                ${state.busy ? 'Считаю...' : 'Посчитать'}
               </button>
-              <button id="clear-photo-button" class="ghost" type="button" ${!state.imageDataUrl ? 'disabled' : ''}>Очистить</button>
+              <button id="clear-photo-button" class="ghost" type="button" ${state.busy ? 'disabled' : ''}>Очистить</button>
             </div>
           `}
           ${state.analysis ? renderAnalysis() : ''}
@@ -236,7 +236,7 @@ function bindEvents() {
   document.querySelector('#logout-button')?.addEventListener('click', onLogout);
   document.querySelector('#photo-input')?.addEventListener('change', onPhotoChange);
   document.querySelector('#analyze-button')?.addEventListener('click', onAnalyze);
-  document.querySelector('#clear-photo-button')?.addEventListener('click', clearPhoto);
+  document.querySelector('#clear-photo-button')?.addEventListener('click', clearEntryInput);
   document.querySelector('#meal-form')?.addEventListener('submit', onSaveMeal);
   document.querySelector('#cancel-edit-button')?.addEventListener('click', cancelEdit);
   document.querySelectorAll('.day-chip').forEach((button) => {
@@ -303,18 +303,21 @@ async function onPhotoChange(event) {
 }
 
 async function onAnalyze() {
-  if (!state.imageDataUrl) return;
   const photoNote = new FormData(document.querySelector('#meal-form')).get('photoNote');
+  const hasText = Boolean(String(photoNote || '').trim());
+  if (!state.imageDataUrl && !hasText) {
+    flash('Добавь фото или опиши приём пищи текстом.');
+    return;
+  }
   state.busy = true;
   state.message = '';
   render();
   try {
-    const payload = await api('/api/analyze-food', {
+    const payload = await api(state.imageDataUrl ? '/api/analyze-food' : '/api/analyze-text', {
       method: 'POST',
-      body: {
-        imageDataUrl: state.imageDataUrl,
-        photoNote
-      },
+      body: state.imageDataUrl
+        ? { imageDataUrl: state.imageDataUrl, photoNote }
+        : { description: photoNote },
       retries: 1,
       timeoutMs: 70000
     });
@@ -397,6 +400,11 @@ function clearPhoto(shouldRender = true) {
   state.imageDataUrl = '';
   state.analysis = null;
   if (shouldRender) render();
+}
+
+function clearEntryInput() {
+  clearPhoto(false);
+  render();
 }
 
 function ensureSelectedDate() {

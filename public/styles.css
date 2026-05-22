@@ -208,11 +208,22 @@ textarea {
   outline: none;
   min-height: 48px;
   font-size: 1rem;
+  font-weight: 400;
   transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 }
 
 input::placeholder,
 textarea::placeholder {
+  font-weight: 400;
+}
+
+input::-webkit-input-placeholder,
+textarea::-webkit-input-placeholder {
+  font-weight: 400;
+}
+
+input::-moz-placeholder,
+textarea::-moz-placeholder {
   font-weight: 400;
 }
 
@@ -528,7 +539,7 @@ textarea:focus {
   color: #5f5140;
   padding: 6px 10px;
   font-size: 0.84rem;
-  font-weight: 800;
+  font-weight: 400;
 }
 
 .chips {
@@ -543,7 +554,7 @@ textarea:focus {
   border-radius: 999px;
   padding: 6px 9px;
   font-size: 0.82rem;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .meal-card p {

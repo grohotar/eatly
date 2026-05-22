@@ -164,6 +164,29 @@ app.post('/api/analyze-food', requireUser, async (req, res) => {
   }
 });
 
+app.post('/api/analyze-text', requireUser, async (req, res) => {
+  if (!geminiApiKey) {
+    return res.status(500).json({ error: 'Gemini API key не настроен на сервере.' });
+  }
+
+  if (!allowAnalyze(req.user.id)) {
+    return res.status(429).json({ error: 'Слишком много анализов подряд. Попробуй через минуту.' });
+  }
+
+  const description = cleanText(req.body?.description, 1000);
+  if (description.length < 3) {
+    return res.status(400).json({ error: 'Опиши приём пищи текстом.' });
+  }
+
+  try {
+    const analysis = await analyzeTextWithGemini({ description });
+    res.json({ analysis });
+  } catch (error) {
+    console.error('Gemini text analysis failed:', error);
+    res.status(502).json({ error: 'Не получилось посчитать по описанию. Можно добавить запись вручную.' });
+  }
+});
+
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'API endpoint не найден.' });
 });
@@ -198,6 +221,32 @@ async function analyzeWithGemini({ mimeType, base64, photoNote }) {
     'Если еда не распознана, поставь caloriesMin=0, caloriesMax=0 и попроси описать блюдо вручную.'
   ].filter(Boolean).join('\n');
 
+  return requestGeminiJson([
+    { text: prompt },
+    { inlineData: { mimeType, data: base64 } }
+  ]);
+}
+
+async function analyzeTextWithGemini({ description }) {
+  const prompt = [
+    'Ты бережный ассистент для дневника питания. Пользователь может иметь РПП, поэтому отвечай без оценки, давления, стыда и диетической риторики.',
+    'Пользователь описал приём пищи без фото. Посчитай практичную оценку калорий по тексту.',
+    `Описание пользователя: ${description}`,
+    'Разбери количества и способ приготовления. Если указаны штуки, используй типичные веса: куриное филе 120-180 г за штуку, яйцо 55-65 г, тост/ломтик хлеба 30-45 г, если пользователь не уточнил иначе.',
+    'Если пользователь явно пишет “без масла”, “без соуса”, “без сахара”, не добавляй эти калории.',
+    'Если ингредиент или размер порции неоднозначен, выбери реалистичное допущение и кратко запиши его в portionNote.',
+    'Калории возвращай диапазоном, но не используй универсальные широкие диапазоны вроде 350-650 для разных блюд.',
+    'Если количества понятны, диапазон обычно должен быть узким: примерно 10-20% вокруг лучшей оценки. Для неоднозначных описаний допустимо до 30%.',
+    'Округляй caloriesMin и caloriesMax до ближайших 10 ккал.',
+    'Верни только JSON без markdown.',
+    'Схема:',
+    '{"title":"короткое название","ingredients":["ингредиент"],"caloriesMin":0,"caloriesMax":0,"portionNote":"коротко про допущения по порции","gentleComment":"мягкий нейтральный комментарий"}'
+  ].join('\n');
+
+  return requestGeminiJson([{ text: prompt }]);
+}
+
+async function requestGeminiJson(parts) {
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`, {
     method: 'POST',
     headers: {
@@ -208,10 +257,7 @@ async function analyzeWithGemini({ mimeType, base64, photoNote }) {
       contents: [
         {
           role: 'user',
-          parts: [
-            { text: prompt },
-            { inlineData: { mimeType, data: base64 } }
-          ]
+          parts
         }
       ],
       generationConfig: {
