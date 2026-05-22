@@ -141,22 +141,23 @@ app.post('/api/analyze-food', requireUser, async (req, res) => {
     return res.status(429).json({ error: 'Слишком много анализов подряд. Попробуй через минуту.' });
   }
 
-  const imageDataUrl = String(req.body?.imageDataUrl || '');
-  const match = imageDataUrl.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,([a-zA-Z0-9+/=]+)$/);
-  if (!match) {
-    return res.status(400).json({ error: 'Нужно отправить фото в формате JPEG, PNG или WebP.' });
+  const rawImages = Array.isArray(req.body?.imageDataUrls)
+    ? req.body.imageDataUrls
+    : [req.body?.imageDataUrl];
+  const images = rawImages.map(parseImageDataUrl).filter(Boolean).slice(0, 4);
+
+  if (!images.length) {
+    return res.status(400).json({ error: 'Нужно отправить фото или скриншот в формате JPEG, PNG или WebP.' });
   }
 
-  const mimeType = match[1] === 'image/jpg' ? 'image/jpeg' : match[1];
-  const base64 = match[2];
-  const byteLength = Math.floor((base64.length * 3) / 4);
-  if (byteLength > 4_500_000) {
-    return res.status(413).json({ error: 'Фото слишком большое. Попробуй выбрать или снять фото поменьше.' });
+  const totalBytes = images.reduce((sum, image) => sum + image.byteLength, 0);
+  if (totalBytes > 8_000_000) {
+    return res.status(413).json({ error: 'Изображения слишком большие. Попробуй выбрать меньше фото.' });
   }
 
   try {
     const photoNote = cleanText(req.body?.photoNote, 500);
-    const analysis = await analyzeWithGemini({ mimeType, base64, photoNote });
+    const analysis = await analyzeWithGemini({ images, photoNote });
     res.json({ analysis });
   } catch (error) {
     console.error('Gemini analysis failed:', error);
@@ -204,10 +205,11 @@ app.listen(port, host, () => {
   console.log(`Eatly is listening on ${host}:${port}`);
 });
 
-async function analyzeWithGemini({ mimeType, base64, photoNote }) {
+async function analyzeWithGemini({ images, photoNote }) {
   const prompt = [
     'Ты бережный ассистент для дневника питания. Пользователь может иметь РПП, поэтому отвечай без оценки, давления, стыда и диетической риторики.',
-    'Проанализируй фото еды и дай практичную оценку калорий для видимой порции, а не общий справочный диапазон для блюда.',
+    'Проанализируй фото, скриншот или несколько изображений еды и дай практичную оценку калорий для всей видимой порции, а не общий справочный диапазон для блюда.',
+    'Если изображений несколько, считай их одним приёмом пищи. Не дублируй один и тот же продукт, если он очевидно повторяется на разных ракурсах.',
     'Сначала мысленно определи: тип блюда, основные ингредиенты, способ приготовления, примерный объём порции, видимые жирные соусы/масло/сыр/сладкие добавки.',
     'Калории возвращай диапазоном, но не используй универсальные широкие диапазоны вроде 350-650 для разных блюд.',
     'Если блюдо и порция видны нормально, диапазон обычно должен быть узким: примерно 15-25% вокруг лучшей оценки. Для сложных смешанных блюд допустимо до 30-35%.',
@@ -223,7 +225,7 @@ async function analyzeWithGemini({ mimeType, base64, photoNote }) {
 
   return requestGeminiJson([
     { text: prompt },
-    { inlineData: { mimeType, data: base64 } }
+    ...images.map((image) => ({ inlineData: { mimeType: image.mimeType, data: image.base64 } }))
   ]);
 }
 
@@ -312,6 +314,19 @@ function parseJsonText(text) {
     if (!match) throw new Error('No JSON in Gemini response');
     return JSON.parse(match[0]);
   }
+}
+
+function parseImageDataUrl(value) {
+  const imageDataUrl = String(value || '');
+  const match = imageDataUrl.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,([a-zA-Z0-9+/=]+)$/);
+  if (!match) return null;
+
+  const mimeType = match[1] === 'image/jpg' ? 'image/jpeg' : match[1];
+  const base64 = match[2];
+  const byteLength = Math.floor((base64.length * 3) / 4);
+  if (byteLength > 4_500_000) return null;
+
+  return { mimeType, base64, byteLength };
 }
 
 async function loadDb() {

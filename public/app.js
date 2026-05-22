@@ -1,5 +1,5 @@
 const app = document.querySelector('#app');
-const appVersion = '0.1.23';
+const appVersion = '0.1.31';
 
 const state = {
   user: null,
@@ -8,8 +8,8 @@ const state = {
   editingMealId: null,
   editDraft: null,
   selectedDateKey: '',
-  previewUrl: '',
-  imageDataUrl: '',
+  previewUrls: [],
+  imageDataUrls: [],
   busy: false,
   message: ''
 };
@@ -91,18 +91,18 @@ function renderShell() {
     </header>
     <main class="layout">
       <section class="entry-panel">
-        <div class="section-head">
+        <div class="${isEditing ? 'section-head section-head-stacked' : 'section-head'}">
           <h2>${isEditing ? 'Редактирование' : 'Новая запись'}</h2>
           <span class="muted">${isEditing ? 'можно поправить детали' : new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(new Date())}</span>
         </div>
         <form id="meal-form" class="stack">
           ${isEditing ? '' : `
             <label class="photo-drop">
-              <input id="photo-input" name="photo" type="file" accept="image/*" capture="environment">
+              <input id="photo-input" name="photo" type="file" accept="image/*" multiple>
               ${
-                state.previewUrl
-                  ? `<img src="${state.previewUrl}" alt="Выбранное фото">`
-                  : '<span class="camera-icon" aria-hidden="true">□</span><strong>Фото еды</strong>'
+                state.previewUrls.length
+                  ? `<div class="photo-preview-grid">${state.previewUrls.map((url, index) => `<img src="${url}" alt="Выбранное изображение ${index + 1}">`).join('')}</div>`
+                  : '<span class="camera-icon" aria-hidden="true">□</span><strong>Фото, скриншот или галерея</strong>'
               }
             </label>
             <label>
@@ -121,10 +121,6 @@ function renderShell() {
             <label>
               <span>Название</span>
               <input name="title" value="${escapeAttr(state.analysis?.title || formValues.title || '')}" placeholder="Блюдо или продукт" required>
-            </label>
-            <label>
-              <span>Порция</span>
-              <input name="portionSize" value="${escapeAttr(formValues.portionSize || '')}" placeholder="Порция: обычная, 250 г">
             </label>
           </div>
           <div class="field-grid calories-grid">
@@ -223,7 +219,6 @@ function renderMeal(meal) {
       </div>
       <div class="meal-meta">
         <span>${escapeHtml(calories)}</span>
-        ${meal.portionSize ? `<span>${escapeHtml(meal.portionSize)}</span>` : ''}
       </div>
       ${meal.ingredients?.length ? `<div class="chips">${meal.ingredients.map((item) => `<span>${escapeHtml(item)}</span>`).join('')}</div>` : ''}
       ${meal.note ? `<p>${escapeHtml(meal.note)}</p>` : ''}
@@ -289,34 +284,35 @@ async function onLogout() {
 }
 
 async function onPhotoChange(event) {
-  const file = event.target.files?.[0];
-  if (!file) return;
+  const files = [...(event.target.files || [])].slice(0, 4);
+  if (!files.length) return;
   try {
-    const compressed = await compressImage(file);
-    state.imageDataUrl = compressed;
-    state.previewUrl = compressed;
+    const compressed = await Promise.all(files.map(compressImage));
+    state.imageDataUrls = compressed;
+    state.previewUrls = compressed;
     state.analysis = null;
     render();
   } catch {
-    flash('Не получилось открыть фото.');
+    flash('Не получилось открыть одно из изображений.');
   }
 }
 
 async function onAnalyze() {
   const photoNote = new FormData(document.querySelector('#meal-form')).get('photoNote');
   const hasText = Boolean(String(photoNote || '').trim());
-  if (!state.imageDataUrl && !hasText) {
-    flash('Добавь фото или опиши приём пищи текстом.');
+  const hasImages = state.imageDataUrls.length > 0;
+  if (!hasImages && !hasText) {
+    flash('Добавь фото, скриншот или опиши приём пищи текстом.');
     return;
   }
   state.busy = true;
   state.message = '';
   render();
   try {
-    const payload = await api(state.imageDataUrl ? '/api/analyze-food' : '/api/analyze-text', {
+    const payload = await api(hasImages ? '/api/analyze-food' : '/api/analyze-text', {
       method: 'POST',
-      body: state.imageDataUrl
-        ? { imageDataUrl: state.imageDataUrl, photoNote }
+      body: hasImages
+        ? { imageDataUrls: state.imageDataUrls, photoNote }
         : { description: photoNote },
       retries: 1,
       timeoutMs: 70000
@@ -347,7 +343,7 @@ async function onSaveMeal(event) {
       caloriesMax: form.get('caloriesMax'),
       portionNote: form.get('portionNote'),
       gentleComment: form.get('gentleComment'),
-      portionSize: form.get('portionSize'),
+      portionSize: '',
       note: form.get('note')
     };
     const isEditing = Boolean(state.editingMealId);
@@ -378,7 +374,7 @@ function startEdit(mealId) {
     caloriesMax: meal.caloriesMax || '',
     portionNote: meal.portionNote || '',
     gentleComment: meal.gentleComment || '',
-    portionSize: meal.portionSize || '',
+    portionSize: '',
     note: meal.note || ''
   };
   state.analysis = null;
@@ -396,8 +392,8 @@ function cancelEdit() {
 }
 
 function clearPhoto(shouldRender = true) {
-  state.previewUrl = '';
-  state.imageDataUrl = '';
+  state.previewUrls = [];
+  state.imageDataUrls = [];
   state.analysis = null;
   if (shouldRender) render();
 }
