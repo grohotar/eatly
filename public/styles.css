@@ -2,16 +2,16 @@
 
 :root {
   color-scheme: light;
-  --bg: #fcfaf6;
+  --bg: #fdfefe;
   --panel: #ffffff;
   --ink: #1f2523;
   --muted: #6b746f;
-  --line: #d9ddd4;
-  --accent: #187b63;
-  --accent-dark: #0f5c4a;
+  --line: #d6e7ef;
+  --accent: #7dd0f8;
+  --accent-dark: #167ea9;
   --sun: #f2b84b;
   --berry: #9b3d66;
-  --soft: #eef4ef;
+  --soft: #eaf8fe;
   --danger: #a33838;
   font-family: Onest, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -42,7 +42,7 @@ body {
   min-height: 100vh;
   max-width: 100%;
   overflow-x: hidden;
-  background: linear-gradient(180deg, #fffdf9 0%, var(--bg) 44%, #f4f8f2 100%);
+  background: linear-gradient(180deg, #ffffff 0%, var(--bg) 62%, #f7fcff 100%);
   color: var(--ink);
   -webkit-overflow-scrolling: touch;
   user-select: none;
@@ -91,7 +91,7 @@ button:disabled {
   display: grid;
   place-items: center;
   background: var(--accent);
-  color: #fff;
+  color: #12313f;
   border-radius: 8px;
   font-weight: 800;
   font-size: 1.45rem;
@@ -176,7 +176,7 @@ button:disabled {
 }
 
 .section-head h2 {
-  font-size: 1.1rem;
+  font-size: 22px;
 }
 
 .stack {
@@ -231,7 +231,7 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(24, 123, 99, 0.14);
+  box-shadow: 0 0 0 3px rgba(125, 208, 248, 0.28);
 }
 
 .field-grid {
@@ -246,9 +246,9 @@ textarea:focus {
 
 .photo-drop {
   min-height: 190px;
-  border: 1px dashed #aeb8b1;
+  border: 1px dashed #9ecfe5;
   border-radius: 8px;
-  background: #fbfcf8;
+  background: #f8fdff;
   display: grid;
   place-items: center;
   text-align: center;
@@ -329,16 +329,16 @@ textarea:focus {
 
 .primary {
   background: var(--accent);
-  color: #fff;
+  color: #12313f;
 }
 
 .primary:hover {
-  background: var(--accent-dark);
+  background: #5fc4f4;
 }
 
 .secondary {
-  background: #24302c;
-  color: #fff;
+  background: var(--accent);
+  color: #12313f;
 }
 
 .ghost {
@@ -407,10 +407,10 @@ textarea:focus {
 }
 
 .analysis-box {
-  border: 1px solid #d5e4d9;
+  border: 1px solid #c9e9f8;
   border-radius: 8px;
   padding: 13px;
-  background: #f4faf5;
+  background: #f3fbff;
   display: grid;
   gap: 9px;
 }
@@ -431,6 +431,57 @@ textarea:focus {
   color: var(--accent-dark);
   font-size: 0.82rem;
   font-weight: 800;
+}
+
+.daily-history {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.day-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin: 0 -16px;
+  padding: 0 16px 2px;
+  scroll-padding: 0 16px;
+  scrollbar-width: none;
+}
+
+.day-chip {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 4px;
+  min-width: 112px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff;
+  color: var(--ink);
+  text-align: left;
+}
+
+.day-chip span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.day-chip strong {
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.day-chip.is-active {
+  border-color: var(--accent);
+  background: #eaf8fe;
+}
+
+.day-chip.is-active span,
+.day-chip.is-active strong {
+  color: var(--accent-dark);
 }
 
 .meal-list {

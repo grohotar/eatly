@@ -1,5 +1,5 @@
 const app = document.querySelector('#app');
-const appVersion = '0.1.12';
+const appVersion = '0.1.19';
 
 const state = {
   user: null,
@@ -7,6 +7,7 @@ const state = {
   analysis: null,
   editingMealId: null,
   editDraft: null,
+  selectedDateKey: '',
   previewUrl: '',
   imageDataUrl: '',
   busy: false,
@@ -35,6 +36,7 @@ async function loadMe() {
 async function loadMeals() {
   const payload = await api('/api/meals');
   state.meals = payload.meals || [];
+  ensureSelectedDate();
 }
 
 function render() {
@@ -68,6 +70,11 @@ function renderLogin() {
 function renderShell() {
   const isEditing = Boolean(state.editingMealId);
   const formValues = state.editDraft || {};
+  const dailyStats = getDailyStats();
+  const selectedDay = dailyStats.find((day) => day.key === state.selectedDateKey) || dailyStats[0];
+  const selectedMeals = selectedDay
+    ? state.meals.filter((meal) => getDateKey(meal.createdAt) === selectedDay.key)
+    : [];
 
   return `
     <header class="topbar">
@@ -155,15 +162,30 @@ function renderShell() {
       <section class="diary-panel">
         <div class="section-head">
           <h2>История</h2>
-          <button id="refresh-button" class="ghost" type="button">Обновить</button>
         </div>
+        ${dailyStats.length ? renderDailyHistory(dailyStats, selectedDay) : ''}
         <div class="meal-list">
-          ${state.meals.length ? state.meals.map(renderMeal).join('') : '<p class="empty">Пока нет записей.</p>'}
+          ${selectedMeals.length ? selectedMeals.map(renderMeal).join('') : '<p class="empty">Пока нет записей.</p>'}
         </div>
       </section>
     </main>
     <footer class="app-version">Eatly v${appVersion}</footer>
     <div id="toast" class="${state.message ? 'toast is-visible' : 'toast'}">${escapeHtml(state.message)}</div>
+  `;
+}
+
+function renderDailyHistory(days, selectedDay) {
+  return `
+    <div class="daily-history">
+      <div class="day-strip" aria-label="История по дням">
+        ${days.map((day) => `
+          <button class="${day.key === selectedDay.key ? 'day-chip is-active' : 'day-chip'}" type="button" data-date="${day.key}">
+            <span>${escapeHtml(day.shortLabel)}</span>
+            <strong>${escapeHtml(formatCaloriesRange(day.caloriesMin, day.caloriesMax))}</strong>
+          </button>
+        `).join('')}
+      </div>
+    </div>
   `;
 }
 
@@ -217,9 +239,11 @@ function bindEvents() {
   document.querySelector('#clear-photo-button')?.addEventListener('click', clearPhoto);
   document.querySelector('#meal-form')?.addEventListener('submit', onSaveMeal);
   document.querySelector('#cancel-edit-button')?.addEventListener('click', cancelEdit);
-  document.querySelector('#refresh-button')?.addEventListener('click', async () => {
-    await loadMeals();
-    flash('История обновлена.');
+  document.querySelectorAll('.day-chip').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.selectedDateKey = button.dataset.date;
+      render();
+    });
   });
   document.querySelectorAll('.delete-meal').forEach((button) => {
     button.addEventListener('click', async () => {
@@ -373,6 +397,81 @@ function clearPhoto(shouldRender = true) {
   state.imageDataUrl = '';
   state.analysis = null;
   if (shouldRender) render();
+}
+
+function ensureSelectedDate() {
+  const keys = [...new Set(state.meals.map((meal) => getDateKey(meal.createdAt)))];
+  if (!keys.length) {
+    state.selectedDateKey = '';
+    return;
+  }
+  if (!state.selectedDateKey || !keys.includes(state.selectedDateKey)) {
+    state.selectedDateKey = keys[0];
+  }
+}
+
+function getDailyStats() {
+  const stats = new Map();
+  state.meals.forEach((meal) => {
+    const key = getDateKey(meal.createdAt);
+    const current = stats.get(key) || {
+      key,
+      date: new Date(meal.createdAt),
+      caloriesMin: 0,
+      caloriesMax: 0,
+      count: 0
+    };
+    const calories = getMealCaloriesRange(meal);
+    current.caloriesMin += calories.min;
+    current.caloriesMax += calories.max;
+    current.count += 1;
+    stats.set(key, current);
+  });
+
+  return [...stats.values()]
+    .sort((a, b) => b.key.localeCompare(a.key))
+    .map((day) => ({
+      ...day,
+      label: formatDayLabel(day.date),
+      shortLabel: formatShortDayLabel(day.date)
+    }));
+}
+
+function getMealCaloriesRange(meal) {
+  const min = Number(meal.caloriesMin || 0);
+  const max = Number(meal.caloriesMax || 0);
+  if (min && max) return { min, max };
+  if (min) return { min, max: min };
+  if (max) return { min: max, max };
+  return { min: 0, max: 0 };
+}
+
+function formatCaloriesRange(min, max) {
+  if (!min && !max) return 'без оценки';
+  if (min === max) return `${min} ккал`;
+  return `${min}-${max} ккал`;
+}
+
+function getDateKey(value) {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatDayLabel(date) {
+  const today = getDateKey(new Date());
+  const yesterdayDate = new Date();
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const key = getDateKey(date);
+  if (key === today) return 'Сегодня';
+  if (key === getDateKey(yesterdayDate)) return 'Вчера';
+  return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(date);
+}
+
+function formatShortDayLabel(date) {
+  return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' }).format(date);
 }
 
 async function api(url, options = {}) {

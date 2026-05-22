@@ -4,8 +4,8 @@
   "description": "Gentle food diary",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fcfaf6",
-  "theme_color": "#fcfaf6",
+  "background_color": "#fdfefe",
+  "theme_color": "#fdfefe",
   "icons": [
     {
       "src": "/icon-192.png",
